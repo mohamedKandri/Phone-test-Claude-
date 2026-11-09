@@ -9,9 +9,9 @@ set VIRTUAL_ENV=
 set PYTHONHOME=
 set PYTHONPATH=
 
-rem The tool needs Python 3.10 or newer. Look for one.
+rem The tool needs Python 3.10 or newer. Prefer 3.12, which has the widest package support.
 set PY=
-for %%V in (3.14 3.13 3.12 3.11 3.10) do (
+for %%V in (3.12 3.13 3.11 3.14 3.10) do (
   if not defined PY (
     py -%%V -c "import sys" >nul 2>nul && set "PY=py -%%V"
   )
