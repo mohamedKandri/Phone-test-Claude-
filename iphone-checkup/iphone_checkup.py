@@ -15,10 +15,8 @@ The results are saved to "iphone_report.txt" next to this file.
 Private identifiers (serial number, IMEI, phone number) are NOT put in the report.
 """
 
-import asyncio
 import collections
 import datetime
-import inspect
 import json
 import os
 import re
@@ -48,7 +46,7 @@ def heading(title):
 
 def run_cli(args, timeout=180):
     """Run a pymobiledevice3 command. Returns (output, error)."""
-    cmd = [sys.executable, "-m", "pymobiledevice3"] + args
+    cmd = [sys.executable, "-m", "pymobiledevice3", "--no-color"] + args
     env = dict(os.environ, NO_COLOR="1", PYTHONIOENCODING="utf-8")
     try:
         p = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
@@ -86,12 +84,6 @@ def run_cli_json(variants):
     return None, last_err
 
 
-def resolve(value):
-    if inspect.isawaitable(value):
-        return asyncio.run(value) if not asyncio.iscoroutine(value) else asyncio.run(value)
-    return value
-
-
 def find_key(obj, wanted):
     """Find the first value for any of the wanted keys anywhere in nested data."""
     if isinstance(obj, dict):
@@ -118,10 +110,9 @@ def gb(n):
 
 def check_connected():
     data, err = run_cli_json([["usbmux", "list"]])
-    if err:
-        say("Could not look for devices: " + err)
-        return False
-    if not data:
+    if err or not data:
+        if err:
+            say("Could not look for devices: " + err)
         say("No iPhone found.")
         say("  - Plug the iPhone in with the cable and UNLOCK it.")
         say("  - If it asks 'Trust This Computer?', tap Trust and enter your passcode.")
@@ -145,14 +136,8 @@ def check_info():
 
 def check_storage():
     heading("STORAGE")
-    data, err = None, None
-    try:
-        from pymobiledevice3.lockdown import create_using_usbmux
-        lockdown = resolve(create_using_usbmux())
-        data = resolve(lockdown.get_value(domain="com.apple.disk_usage"))
-    except Exception as e:  # noqa: BLE001
-        err = repr(e)
-    if not data:
+    data, err = run_cli_json([["lockdown", "get", "com.apple.disk_usage"]])
+    if not isinstance(data, dict) or not data:
         say("Could not read storage: " + (err or "no data"))
         say("Check it on the phone: Settings > General > iPhone Storage")
         return
